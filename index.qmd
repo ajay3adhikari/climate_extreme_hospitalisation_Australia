@@ -1,5 +1,7 @@
 ---
 title: "Contribution of climate extremes and states/territories to the national spikes of weather-related hospitalisation in Australia"
+project:
+  type: website
 format: html
 editor: visual
 execute: 

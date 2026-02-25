@@ -1,0 +1,113 @@
+---
+title: "Contribution of climate extremes and states/territories to the national spikes of weather-related hospitalisation in Australia"
+project:
+  type: website
+format: html
+editor: visual
+execute: 
+  echo: false
+  warning: false
+  freeze: auto
+---
+
+```{r}
+# import library
+pacman::p_load(openxlsx, tidytext, tidyverse)
+```
+
+# Background
+
+Extreme climate events have been frequent in recent years in Australia including [bushfires, extreme heat, intense rainfall and floods](https://soe.dcceew.gov.au/overview/pressures/climate-change-and-extreme-events) leading to health issues. [National record shows](https://www.aihw.gov.au/reports/australias-health/extreme-weather-injuries) that number of weather-related hospitalisation ranges between 748 to 1108 between 2012 and 2022.
+
+While it is evident that over 70% of weather-related hospitalisation are attributed to heat nationally (figure below), this is insufficient to comprehend the jurisdictional differences of the impacts of heat and other climate extremes given the [differences in climate extremes across Australia](https://www.csiro.au/en/research/environmental-impacts/climate-change/state-of-the-climate/australias-changing-climate). This calls for understanding the dominance of different climate events-related hospitalisations across states and territories for a relevant climate adaptation planning.
+
+```{r}
+
+# extreme weather-related hospitalisation from 2012-13 to 2021-22 - national level
+
+national_hospitalisation <- readxl::read_xlsx("./data/aihw_extreme_weather_injury.xlsx",
+                                              sheet = "DataTable1", skip = 1) |>
+  rename(year = `...1`) |> 
+  drop_na() |> 
+  slice(-n()) |> 
+  pivot_longer(cols = c(2:5),
+               names_to = "hazard", values_to = "count") |>
+  group_by(year) |> 
+  mutate(perc = round (count/Total * 100, digits = 1)) |> 
+  select(year, hazard, perc)
+
+ggplot(national_hospitalisation) +
+  geom_line(aes(year, perc, group = hazard, color = hazard), linewidth = 1) +
+  labs(title = "Extreme weather-related injury hospitalisations, 2012–13 to 2021–22",
+       x = "Year", y = "Percent, %", color = "Hazard") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom", legend.title.position = "top",
+        legend.title = element_text(hjust = 0.5),
+        legend.box.background = element_rect(),
+        plot.title = element_text(face = "bold"))
+
+```
+
+Source: <https://www.aihw.gov.au/reports/injury/extreme-weather-injuries/data>
+
+# Hazard and hospitalisation across states and territories
+
+Weather-related hospitalisation and their causes vary across states and territories in Australia. [Recent available data](https://www.aihw.gov.au/reports/injury/extreme-weather-injuries/data) shows that heat dominates these hospitalisations in seven states and territories - from 86% in Queensland to 66% in New South Wales. However, cold is the major cause of weather-related hospitalisation in Tasmania.
+
+Unlike heat, shares of cold, bushfire, and rain and storms related hospitalisation vary across states and territories. For example, bushfire is the second most prominent cause of hospitalisation in New South Wales, Northen Territory, Queensland, South Australia and Western Australia whereas third in Australian Capital Territory, Victoria and Tasmania. This presents the different levels of climate hazard impact on hospitalisation.
+
+```{r}
+
+# extreme weather-related hospitalisation from 2019-20 to 2021-22 - state level
+
+# import data
+state_hospitalisation <- readxl::read_xlsx("./data/aihw_extreme_weather_injury.xlsx",
+                                           sheet = "DataTable4", skip = 1) |> 
+  rename(hazard = `...1`, National = Total) |> 
+  slice(1:4)
+
+# hazard dominance across states
+hazard_dom <- state_hospitalisation |> 
+  select(- National) |> 
+  mutate(across(c(2:9), \(x) round(x / sum(x) * 100, digits = 1))) |> 
+  pivot_longer(cols = c(2:9), names_to = "state", values_to = "perc")
+
+ggplot(hazard_dom) +
+  geom_bar(stat = "identity", aes(tidytext::reorder_within(hazard, -perc, state), perc, fill = hazard)) +
+  tidytext::scale_x_reordered() +
+  facet_wrap(vars(state), scales = "free_x") +
+  labs(title = "Attribution of hospitalisation to climate hazards, 2019–20 to 2021–22",
+       x = "",y = "Percent, %") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold"))
+```
+
+Source: <https://www.aihw.gov.au/reports/injury/extreme-weather-injuries/data>
+
+Additionally, it is imperative to recognise the contribution of states and territories to the national weather-related hospitalisation incidents. New South Wales has the highest share (31%) of bushfire related hospitalisation followed by Queensland (20%) and South Australia, Victoria and Western Australia (over 13% in each state). Similarly, New South Wales (49%) leads in rain and storms related hospitalisation followed by Queensland (26%) and same three states with varying share percentages.
+
+Victoria is at the forefront with over 27% contribution to cold-related hospitalisation in the country, folllowed by New South Wales (21%) and Queensland (13%). Regarding, Heat-related hospitalisation, Queensland has the highest share (34%) followed by Victoria (19%) and New South Wales (16%).
+
+```{r}
+# state dominance in national incident
+state_dom <- state_hospitalisation |>
+  select(- National) |> 
+  mutate(National = rowSums(across(c(2:9))),
+         across(c(2:9), \(x) round(x / National * 100, digits = 1))) |> 
+  pivot_longer(cols = c(2:9), names_to = "state", values_to = "perc")
+
+ggplot(state_dom) +
+  geom_bar(stat = "identity", aes(tidytext::reorder_within(state, -perc, hazard), perc, fill = state)) +
+  tidytext::scale_x_reordered() +
+  facet_wrap(vars(hazard), scales = "free_x") +
+  labs(title = "State/territory dominance in weather-related hospitalisation, 2019–20 to 2021–22",
+       x = "",y = "Percent, %") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold"))
+```
+
+Source: <https://www.aihw.gov.au/reports/injury/extreme-weather-injuries/data>
+
+Above analysis shows that heat is the most prominent climate hazard leading to the hospitalisation across Australia. Additionally, it illustrates that different states and territories have different levels of contribution to national weather-related hospitalisation which calls for locally-based decision-making for effective health service to address the impact of climate extremes.
